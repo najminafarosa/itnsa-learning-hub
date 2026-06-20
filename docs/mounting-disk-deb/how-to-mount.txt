@@ -1,0 +1,107 @@
+# 📑 Panduan Lengkap: Cara Mounting Disk di Linux
+
+Dokumen ini berisi panduan praktis untuk mengecek, melepas (*unmount*), mengubah nama (*label*), memasang (*mount*) disk, serta cara membuat disk terpasang otomatis setiap kali komputer dinyalakan.
+
+---
+
+## 🔍 1. Cek UUID dan Keberadaan Disk
+Sebelum melakukan pengaturan, Anda harus tahu nama drive, format, dan ID unik (UUID) dari disk yang ingin digunakan.
+
+**Perintah:**
+```bash
+lsblk -f
+```
+atau menggunakan hak akses admin:
+```bash
+sudo blkid
+```
+> 💡 **Tips:** Perhatikan kolom **NAME** (seperti `sda1`), **FSTYPE** (format disk seperti `ntfs` atau `ext4`), dan **UUID**. Catat informasi ini karena akan sangat dibutuhkan.
+
+---
+
+## ⏏️ 2. Cara Melepas Disk (Unmount)
+Anda wajib melepas disk dari sistem sebelum mengubah nama atau mencabutnya demi keamanan data.
+
+**Perintah:**
+```bash
+sudo umount /path/ke/direktori_atau_device
+```
+*   **Contoh (Lewat Folder):** `sudo umount /media/data`
+*   **Contoh (Lewat Nama Disk):** `sudo umount /dev/sda1`
+
+---
+
+## 🏷️ 3. Cara Mengubah Nama Disk (Label)
+**Syarat Wajib:** Disk harus dalam posisi sudah dilepas (*unmount*) terlebih dahulu! Perintah yang digunakan berbeda tergantung format file sistem disk Anda.
+
+### A. Untuk Format NTFS (Windows)
+```bash
+sudo ntfslabel /dev/sdX "NamaBaruDisk"
+```
+*   *Contoh:* `sudo ntfslabel /dev/sda1 "DataPribadi"`
+
+### B. Untuk Format EXT4 (Linux)
+```bash
+sudo e2label /dev/sdX "NamaBaruDisk"
+```
+*   *Contoh:* `sudo e2label /dev/sda1 "DataLinux"`
+
+---
+
+## 🔌 4. Cara Memasang Disk Secara Manual (Mount)
+Proses ini digunakan untuk menghubungkan disk ke sebuah folder agar isinya bisa Anda baca dan edit.
+
+**Perintah:**
+```bash
+sudo mount -t [FORMAT_DISK] /dev/sdX /path/ke/folder_tujuan
+```
+
+### Contoh Sesuai Format Disk:
+*   **Jika disk Anda NTFS:**
+    ```bash
+    sudo mount -t ntfs-3g /dev/sda1 /mnt/data
+    ```
+*   **Jika disk Anda EXT4:**
+    ```bash
+    sudo mount -t ext4 /dev/sda1 /mnt/data
+    ```
+
+---
+
+## ⚙️ 5. Cara Agar Disk Otomatis Terpasang (Auto-Mount saat Booting)
+Perintah `mount` biasa bersifat sementara dan akan hilang saat komputer dimatikan. Agar disk terpasang otomatis selamanya, ikuti langkah ini:
+
+1. **Buat folder tujuan terlebih dahulu (jika belum ada):**
+   ```bash
+   sudo mkdir -p /mnt/data
+   ```
+2. **Buka file konfigurasi sistem `/etc/fstab` dengan text editor:**
+   ```bash
+   sudo nano /etc/fstab
+   ```
+3. **Tambahkan baris baru di paling bawah file tersebut dengan format berikut:**
+   ```text
+   # Untuk format EXT4:
+   UUID=isi-uuid-disk-anda  /mnt/data  ext4  defaults  0  2
+
+   # Untuk format NTFS:
+   UUID=isi-uuid-disk-anda  /mnt/data  ntfs-3g  defaults,uid=1000,gid=1000,dmask=022,fmask=133  0  2
+   ```
+   *(Ganti `isi-uuid-disk-anda` dengan kode UUID yang Anda dapatkan dari langkah nomor 1).*
+4. **Simpan dan Keluar:** Tekan `CTRL + O`, lalu `Enter` untuk menyimpan. Tekan `CTRL + X` untuk keluar dari editor Nano.
+5. **Uji coba konfigurasi tanpa restart:**
+   ```bash
+   sudo mount -a
+   ```
+   Jika tidak ada pesan error yang muncul, berarti konfigurasi *auto-mount* Anda sudah berhasil dan aman!
+
+---
+
+## 💡 Tips Tambahan yang Sangat Berguna
+
+1. **Gunakan `sudo` dengan Tepat**  
+   Semua perintah yang berhubungan dengan hardware membutuhkan hak akses tinggi. Pastikan selalu menggunakan `sudo` di awal perintah agar tidak muncul error *Permission Denied*.
+2. **Gunakan UUID, Jangan Nama Device di fstab**  
+   Saat mengatur otomatisasi di `/etc/fstab`, selalu gunakan `UUID` dan bukan `/dev/sda1`. Nama device seperti `/dev/sda1` bisa berubah menjadi `/dev/sdb1` jika Anda mencolokkan flashdisk lain, sedangkan `UUID` tidak akan pernah berubah.
+3. **Penyelamat Saat Error fstab**  
+   Jika setelah mengedit `/etc/fstab` komputer Anda tidak bisa masuk ke menu utama (*stuck saat booting*), jangan panik. Masuk ke *Recovery Mode*, buka kembali file tersebut, dan hapus baris yang baru saja Anda tambahkan.
