@@ -1,0 +1,224 @@
+# Bash Scripting for ITNSA (IT Network System Administration)
+
+Selamat datang di modul pembelajaran **Bash Scripting** pada repositori **itnsa-learning-hub**. Modul ini dirancang untuk membekali Administrator Jaringan dengan kemampuan otomatisasi tugas, manajemen *server* Linux, dan konfigurasi infrastruktur secara cepat.
+
+---
+
+## 📌 Daftar Isi
+* [1. Pengenalan Bash Scripting](#1-pengenalan-bash-scripting)
+* [2. Struktur Dasar & Hak Akses](#2-struktur-dasar--hak-akses)
+* [3. Variabel dan Argumen Input](#3-variabel-dan-argumen-input)
+* [4. Pengondisian (Conditional Logic)](#4-pengondisian-conditional-logic)
+* [5. Perulangan (Looping)](#5-perulangan-looping)
+* [6. Fungsi (Functions)](#6-fungsi-functions)
+* [7. Kasus Implementasi ITNSA (Otomatisasi & Manajemen SSH)](#7-kasus-implementasi-itnsa-otomatisasi--manajemen-ssh)
+
+---
+
+## 1. Pengenalan Bash Scripting
+**Bash (Bourne Again Shell)** adalah *command language interpreter* standar untuk sistem operasi berbasis Linux/Unix. Di dalam kompetensi ITNSA, *Bash Scripting* digunakan untuk menghindari konfigurasi manual yang repetitif, seperti pembuatan banyak user sekaligus, *backup* otomatis, atau pemindaian jaringan (*network scanning*).
+
+---
+
+## 2. Struktur Dasar & Hak Akses
+Setiap file skrip Bash wajib diawali dengan kode penunjuk *interpreter* bernama **Shebang** (`#!/bin/bash`) di baris pertama.
+
+### Contoh Skrip Pertama (`halo.sh`)
+```bash
+#!/bin/bash
+# Ini adalah komentar
+
+echo "Selamat datang di ITNSA Learning Hub!"
+```
+
+### Eksekusi Skrip
+Secara bawaan, file teks baru tidak memiliki izin untuk dieksekusi. Berikan hak akses eksekusi menggunakan perintah `chmod`:
+```bash
+chmod +x halo.sh
+./halo.sh
+```
+
+---
+
+## 3. Variabel dan Argumen Input
+
+### Menggunakan Variabel
+* Aturan: Jangan gunakan spasi di sekitar tanda sama dengan (`=`).
+* Pemanggilan: Gunakan simbol `$` di depan nama variabel.
+
+```bash
+#!/bin/bash
+NAMA_SERVER="Debian-Router"
+echo "Menghubungkan ke \$NAMA_SERVER..."
+```
+
+### Argumen Input (Positional Parameters)
+Skrip dapat menerima parameter dari luar saat dijalankan di terminal (misal: `./skrip.sh argumen1 argumen2`).
+* `$1`, `$2`: Mengambil argumen pertama, kedua, dst.
+* `$#`: Total jumlah argumen yang dikirimkan.
+
+---
+
+## 4. Pengondisian (Conditional Logic)
+Digunakan untuk mengambil keputusan berdasarkan status sistem atau *input* pengguna.
+
+### Struktur If-Else
+```bash
+#!/bin/bash
+STATUS=\$(systemctl is-active apache2)
+
+if [ "\$STATUS" == "active" ]; then
+    echo "Web Server berjalan dengan aman."
+else
+    echo "Peringatan: Web Server mati! Mencoba menyalakan ulang..."
+    systemctl start apache2
+fi
+```
+
+---
+
+## 5. Perulangan (Looping)
+Perulangan sangat berguna untuk memproses banyak target IP, antrean file, atau otomasi akun *user*.
+
+### Contoh: `For Loop` untuk Rentang Angka
+```bash
+#!/bin/bash
+for i in {1..5}
+do
+   echo "Membuat konfigurasi VLAN ID: \$i"
+done
+```
+
+---
+
+## 6. Fungsi (Functions)
+Fungsi digunakan untuk membungkus perintah agar kode lebih rapi dan bisa digunakan berulang kali (*reusable*).
+
+```bash
+#!/bin/bash
+
+log_pesan() {
+    echo "[\$(date +'%Y-%m-%d %H:%M:%S')] - \$1"
+}
+
+log_pesan "Skrip otomatisasi dimulai."
+log_pesan "Proses backup berhasil."
+```
+
+---
+
+## 7. Kasus Implementasi ITNSA (Otomatisasi & Manajemen SSH)
+Berikut adalah kumpulan skrip otomatisasi yang berfokus pada manajemen layanan, pengamanan SSH, dan pembuatan autentikasi berbasis kunci:
+
+### A. Skrip Mengubah Port SSH Otomatis
+Skrip ini berguna untuk mengubah port *default* SSH (22) ke port khusus demi alasan keamanan secara instan.
+
+```bash
+#!/bin/bash
+# Nama file: ubah_port_ssh.sh
+
+PORT_BARU=\$1
+
+if [ -z "\$PORT_BARU" ]; then
+    echo "Cara pakai: sudo ./ubah_port_ssh.sh [PORT_BARU]"
+    echo "Contoh: sudo ./ubah_port_ssh.sh 2222"
+    exit 1
+fi
+
+FILE_KONFIG="/etc/ssh/sshd_config"
+
+echo "Mengubah port SSH menjadi \$PORT_BARU..."
+# Mengganti baris '#Port 22' atau 'Port xx' menjadi Port yang baru
+sudo sed -i -E "s/^#?Port [0-8]*/Port \$PORT_BARU/g" \$FILE_KONFIG
+
+echo "Memeriksa keabsahan konfigurasi..."
+sudo sshd -t
+
+if [ \$? -eq 0 ]; then
+    echo "Konfigurasi valid. Memuat ulang layanan SSH..."
+    sudo systemctl restart sshd
+    echo "Berhasil! SSH sekarang berjalan di port \$PORT_BARU."
+else
+    echo "Gagal: Terdapat kesalahan konfigurasi pada sshd_config."
+fi
+```
+
+### B. Skrip Install Layanan & Cek Service Otomatis
+Skrip ini akan memeriksa apakah suatu layanan (misal: Apache2, Nginx, Squid) sudah terinstal dan aktif. Jika belum terinstal, skrip akan memasangnya secara otomatis.
+
+```bash
+#!/bin/bash
+# Nama file: manage_service.sh
+
+SERVICE=\$1
+
+if [ -z "\$SERVICE" ]; then
+    echo "Cara pakai: ./manage_service.sh [nama_service]"
+    echo "Contoh: ./manage_service.sh nginx"
+    exit 1
+fi
+
+# Cek apakah paket aplikasi sudah terinstal
+if ! dpkg -l | grep -q " \$SERVICE "; then
+    echo "Layanan '\$SERVICE' belum terinstal. Memulai instalasi..."
+    sudo apt update && sudo apt install -y \$SERVICE
+fi
+
+# Cek status keaktifan service menggunakan systemctl
+if systemctl is-active --quiet \$SERVICE; then
+    echo "Status: Layanan '\$SERVICE' sudah aktif dan berjalan dengan normal."
+else
+    echo "Status: Layanan '\$SERVICE' mati atau belum berjalan."
+    echo "Mencoba menyalakan layanan..."
+    sudo systemctl start \$SERVICE
+    
+    if systemctl is-active --quiet \$SERVICE; then
+        echo "Layanan '\$SERVICE' berhasil dinyalakan."
+    else
+        echo "Gagal mengaktifkan layanan '\$SERVICE'. Silakan cek log sistem."
+    fi
+fi
+```
+
+### C. Skrip Pembuatan SSH Key Otomatis
+Skrip ini mengotomatiskan pembuatan sepasang kunci SSH (*Public & Private Key*) tanpa perlu menekan tombol enter berulang kali (interaktif).
+
+```bash
+#!/bin/bash
+# Nama file: buat_ssh_key.sh
+
+NAMA_KUNCI=\$1
+
+if [ -z "\$NAMA_KUNCI" ]; then
+    echo "Cara pakai: ./buat_ssh_key.sh [nama_file_kunci]"
+    echo "Contoh: ./buat_ssh_key.sh id_itnsa_lab"
+    exit 1
+fi
+
+DIREKTORI_SSH="\$HOME/.ssh"
+JALUR_KUNCI="\$DIREKTORI_SSH/\$NAMA_KUNCI"
+
+# Memastikan direktori .ssh ada
+mkdir -p "\$DIREKTORI_SSH"
+chmod 700 "\$DIREKTORI_SSH"
+
+echo "Membuat SSH Key pair (RSA 4096-bit) dengan nama: \$NAMA_KUNCI..."
+
+# Membuat key tanpa passphrase (-N "") secara non-interaktif
+ssh-keygen -t rsa -b 4096 -f "\$JALUR_KUNCI" -N ""
+
+if [ \$? -eq 0 ]; then
+    echo "--------------------------------------------------------"
+    echo "SSH Key Berhasil Dibuat!"
+    echo "Private Key: \$JALUR_KUNCI"
+    echo "Public Key : \$JALUR_KUNCI.pub"
+    echo "--------------------------------------------------------"
+    echo "Gunakan perintah berikut untuk mengirim public key ke server tujuan:"
+    echo "ssh-copy-id -i \$JALUR_KUNCI.pub user@ip_server"
+else
+    echo "Terjadi kesalahan saat pembuatan SSH Key."
+fi
+```
+
+---
+*Dokumentasi ini merupakan bagian dari materi latihan lab independen di [itnsa-learning-hub](). Kontribusi berupa penambahan studi kasus baru sangat diapresiasi melalui Pull Request!*
